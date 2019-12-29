@@ -1,15 +1,17 @@
+import io.zeebe.client.CredentialsProvider
 import io.zeebe.client.ZeebeClient
 import io.zeebe.client.impl.ZeebeClientFutureImpl
+import io.zeebe.client.impl.oauth.OAuthCredentialsProvider
+import io.zeebe.client.impl.oauth.OAuthCredentialsProviderBuilder
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.system.exitProcess
 
 fun main() {
     println("Zeebe Throughput Benchmark")
 
-    val client = ZeebeClient
-            .newClientBuilder()
-            .brokerContactPoint("localhost:26500")
-            .usePlaintext()
-            .build()
+    val client = createClient()
+
+    println(client.newTopologyRequest().send().join());
 
     client.newDeployCommand()
             .addResourceStringUtf8({}.javaClass.getResource("simple-process.bpmn").readText(Charsets.UTF_8), "simple-process.bpmn")
@@ -58,6 +60,20 @@ fun main() {
 
     println("Result after %d milliseconds".format(endTime - startTime))
     println(benchmarkResult)
+}
+
+private fun createClient(): ZeebeClient {
+    return ZeebeClient
+            .newClientBuilder()
+            .credentialsProvider(
+                    OAuthCredentialsProviderBuilder()
+                            .audience("8e6feed1-d120-4d36-86ac-fbd53b23f2a2.zeebe.ultrawombat.com")
+                            .authorizationServerUrl("https://login.cloud.ultrawombat.com/oauth/token")
+                            .clientId("OgNtrArKHh0tQqkZzf95kcTDHWho1BLw")
+                            .clientSecret("1pntn6611b24NYE63jxdqsOEfat6MQ18I83o_5heV7JUZAldPRm8c0QosfG0KTJp")
+                            .build())
+            .brokerContactPoint("8e6feed1-d120-4d36-86ac-fbd53b23f2a2.zeebe.ultrawombat.com:443")
+            .build()
 }
 
 private fun startInstance(client: ZeebeClient) =
