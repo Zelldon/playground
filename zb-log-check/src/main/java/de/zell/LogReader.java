@@ -24,6 +24,9 @@ public final class LogReader extends Actor {
   private static final String ANSI_GREEN = "\u001B[32m";
   private static final String ANSI_RED = "\u001B[31m";
 
+  private static final String DIR_FORMAT = "%s/data/%s/partitions/%d";
+  private static final String PARTITION_NAME_FORMAT = "%s-partition-%d";
+
   private final String path;
   private final ActorScheduler actorScheduler;
   private final String partitionName;
@@ -33,8 +36,8 @@ public final class LogReader extends Actor {
   public LogReader(
       ActorScheduler actorScheduler, String path, String partitionName, int partitionId) {
     this.actorScheduler = actorScheduler;
-    this.path = path;
-    this.partitionName = partitionName;
+    this.path = String.format(DIR_FORMAT, path, partitionName, partitionId);
+    this.partitionName = String.format(PARTITION_NAME_FORMAT, partitionName, partitionId);
     this.partitionId = partitionId;
   }
 

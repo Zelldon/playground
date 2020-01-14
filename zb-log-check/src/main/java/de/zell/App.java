@@ -16,7 +16,8 @@ public class App
         actorScheduler.start();
 
         final var actor = new LogReader(actorScheduler,
-            App.class.getResource("/zeebe-1/data/raft-partition/partitions/1").getFile(), "raft-partition-partition-1", 1);
+            "/home/zell/goPath/src/github.com/Zelldon/playground/data/zeebe-0",
+            "raft-partition", 1);
         actorScheduler.submitActor(actor).join();
 
 
