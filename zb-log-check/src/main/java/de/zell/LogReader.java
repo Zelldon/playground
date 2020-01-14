@@ -45,17 +45,21 @@ public final class LogReader extends Actor {
   @Override
   protected void onActorStarting() {
     final var resourceDir = new File(path);
+
+    final var startTime = System.currentTimeMillis();
     final var raftLog =
         RaftLog.builder()
             .withDirectory(resourceDir)
             .withName(partitionName)
             .withNamespace(RaftNamespaces.RAFT_STORAGE)
             .withMaxEntrySize(4 * 1024 * 1024)
-            .withMaxSegmentSize(128 * 1024 * 1024)
+            .withMaxSegmentSize(512 * 1024 * 1024)
             .withStorageLevel(StorageLevel.DISK)
             .build();
 
-    System.out.println("Log build");
+    final var endtime = System.currentTimeMillis();
+    System.out.println("Log build in " + (endtime - startTime) + " ms");
+
     final var atomixLogStorage =
         new AtomixLogStorage(
             (idx, mode) -> {
