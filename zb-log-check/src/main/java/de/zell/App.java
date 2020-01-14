@@ -1,6 +1,7 @@
 package de.zell;
 
 import io.zeebe.util.sched.ActorScheduler.ActorSchedulerBuilder;
+import java.io.File;
 
 /**
  * Hello world!
@@ -17,7 +18,8 @@ public class App
         final var actorScheduler = new ActorSchedulerBuilder().build();
         actorScheduler.start();
 
-        final var actor = new LogReader(actorScheduler, "example.log");
+        final var actor = new LogReader(actorScheduler,
+            App.class.getResource("/raft-partition/partitions/1").getFile(), "raft-partition-partition-1", 1);
         actorScheduler.submitActor(actor).join();
 
 
