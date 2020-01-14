@@ -13,8 +13,6 @@ public class App
     {
         System.out.println( "Hello World!" );
 
-
-
         final var actorScheduler = new ActorSchedulerBuilder().build();
         actorScheduler.start();
 
@@ -23,7 +21,7 @@ public class App
         actorScheduler.submitActor(actor).join();
 
 
-        actor.open().join();
+        actor.scan().join();
 
 
     }
