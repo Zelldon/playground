@@ -145,6 +145,7 @@ public final class LogReader extends Actor {
       {
         System.out.println(ANSI_GREEN + "LOG IS CONSISTENT." + ANSI_RESET);
       }
+      System.out.println("Last position: " + lastPosition);
       System.out.println("Lowest position: " + low);
       System.out.println("Highest position: " + high);
       System.out.println("Events: " + eventCount);
