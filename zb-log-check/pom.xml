@@ -33,12 +33,12 @@
     </dependency>
 
 
-    <dependency>
-      <groupId>io.zeebe</groupId>
-      <artifactId>zeebe-client-java</artifactId>
-      <version>0.22.0</version>
-      <scope>test</scope>
-    </dependency>
+<!--    <dependency>-->
+<!--      <groupId>io.zeebe</groupId>-->
+<!--      <artifactId>zeebe-client-java</artifactId>-->
+<!--      <version>0.22.0</version>-->
+<!--      <scope>test</scope>-->
+<!--    </dependency>-->
 
     <dependency>
       <groupId>junit</groupId>

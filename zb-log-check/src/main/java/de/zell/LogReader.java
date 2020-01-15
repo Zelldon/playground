@@ -58,7 +58,7 @@ public final class LogReader extends Actor {
             .build();
 
     final var endtime = System.currentTimeMillis();
-    System.out.println("Log build in " + (endtime - startTime) + " ms");
+    System.out.println("Log opened in " + (endtime - startTime) + " ms");
 
     final var atomixLogStorage =
         new AtomixLogStorage(
@@ -76,28 +76,36 @@ public final class LogReader extends Actor {
         .buildAsync();
   }
 
-  public CompletableActorFuture<Void> scan() {
-    final var future = new CompletableActorFuture<Void>();
+  public CompletableActorFuture<Boolean> scan() {
+    final var future = new CompletableActorFuture<Boolean>();
 
     actor
         .call(
             () -> {
               logStreamFuture.onComplete(
                       (logStream, t) -> {
-                        logStream
-                            .newLogStreamReader()
-                            .onComplete(
-                                (reader, t2) -> {
-                                  scanLog(reader);
-                                  future.complete(null);
-                                });
+                        if (t == null) {
+                          logStream
+                              .newLogStreamReader()
+                              .onComplete(
+                                  (reader, t2) -> {
+                                    if (t2 == null) {
+                                      future.complete(scanLog(reader));
+                                    } else {
+                                      future.completeExceptionally(t2);
+                                    }
+                                  });
+                        }
+                        else
+                        {
+                          future.completeExceptionally(t);
+                        }
                       });
-            })
-        .join();
+            });
     return future;
   }
 
-  private void scanLog(LogStreamReader reader) {
+  private boolean scanLog(LogStreamReader reader) {
     System.out.println("Scan log...");
     reader.seekToFirstEvent();
 
@@ -112,7 +120,7 @@ public final class LogReader extends Actor {
 
     System.out.println("Scan finished");
 
-    validationContext.finishValidation();
+    return validationContext.finishValidation();
   }
 
 
@@ -143,7 +151,7 @@ public final class LogReader extends Actor {
       eventCount++;
     }
 
-    void finishValidation() {
+    boolean finishValidation() {
       if (inconsistentLog)
       {
         System.out.println(ANSI_RED + "LOG IS INCONSISTENT!" + ANSI_RESET);
@@ -156,6 +164,7 @@ public final class LogReader extends Actor {
       System.out.println("Lowest position: " + low);
       System.out.println("Highest position: " + high);
       System.out.println("Events: " + eventCount);
+      return inconsistentLog;
     }
 
     private static void onInconsistentLog(long low, long high, long lastPosition, int eventCount,
