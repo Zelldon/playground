@@ -6,7 +6,7 @@
 
   <groupId>de.zell</groupId>
   <artifactId>zb-log-check</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>0.1.0</version>
 
   <name>zb-log-check</name>
   <!-- FIXME change it to the project's website -->
@@ -95,5 +95,31 @@
         </plugin>
       </plugins>
     </pluginManagement>
+
+
+      <plugins>
+        <plugin>
+          <artifactId>maven-assembly-plugin</artifactId>
+          <configuration>
+            <archive>
+              <manifest>
+                <mainClass>de.zell.LogVerificationMain</mainClass>
+              </manifest>
+            </archive>
+            <descriptorRefs>
+              <descriptorRef>jar-with-dependencies</descriptorRef>
+            </descriptorRefs>
+          </configuration>
+          <executions>
+            <execution>
+              <id>make-assembly</id> <!-- this is used for inheritance merges -->
+              <phase>package</phase> <!-- bind to the packaging phase -->
+              <goals>
+                <goal>single</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+      </plugins>
   </build>
 </project>
