@@ -29,7 +29,10 @@ public final class Inspector {
           "list", "get a list of existing entities",
           "entity <key>", "get information about a specificy entity - a separate key is needed.");
 
-  private static final Map<String, EntityInspection> COMMAND_FUNCTIONS = Map.of("incident", new IncidentInspection());
+  private static final Map<String, EntityInspection> COMMAND_FUNCTIONS = Map.of(
+      "incident", new IncidentInspection(),
+      "blacklist", new BlacklistInspection());
+
   private static final Set<String> SUB_COMMAND_FUNCTIONS = Set.of("list", "entity");
 
   private static void printUsage(String[] args) {
