@@ -16,6 +16,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -31,6 +32,10 @@ public final class Inspector {
   private static final Map<String, String> USAGE_CMD = Map.of("incident", "get information about incidents",
       "blacklist", "get information about blacklisted instances");
   private static final Map<String, EntityInspection> COMMAND_FUNCTIONS = Map.of("incident", new IncidentInspection());
+  private static final Map<String, Function<EntityInspection, String>> SUB_COMMAND_FUNCTIONS =
+      Map.of(
+      "list", Inspector::listEntities);
+//      "entity", new IncidentInspection());
 
   private final Path rootDirectory;
 
@@ -43,7 +48,7 @@ public final class Inspector {
         .append(Arrays.toString(args))
         .append('\'')
         .append('\n')
-        .append("Expected usage: java -jar inspector.jar <path> <command>")
+        .append("Expected usage: java -jar inspector.jar <pathToPartition> <command>")
         .append("\nCommand:");
 
     for (var entry : USAGE_CMD.entrySet()) {
@@ -56,19 +61,26 @@ public final class Inspector {
     LOGGER.warn(builder.toString());
   }
 
-  public static void main(String[] args) {
-
-    LOGGER.info("Zeebe Inspector \uD83D\uDD0E");
-
-    if (args.length < 2) {
+  private static void ensureCorrectUsage(String[] args) {
+    if (args.length < 3) {
       printUsage(args);
       System.exit(1);
     }
 
     final String dir = args[0];
-    final var root = Path.of(dir);
-    if (!Files.exists(root)) {
-      LOGGER.error("Root directory does not exist: {}", root.toAbsolutePath());
+    final var partitionsDirectory = Path.of(dir);
+    if (!Files.exists(partitionsDirectory)) {
+      LOGGER.error("Root directory does not exist: {}", partitionsDirectory.toAbsolutePath());
+      printUsage(args);
+      System.exit(1);
+    }
+
+    try {
+      final var partition = partitionsDirectory.getFileName().toString();
+      Integer.valueOf(partition);
+    } catch (NumberFormatException nfe) {
+      LOGGER.error("The path must point to the partitions directory.");
+      printUsage(args);
       System.exit(1);
     }
 
@@ -78,65 +90,70 @@ public final class Inspector {
       System.exit(1);
     }
 
-    LOGGER.info("Root directory: {}", root.toAbsolutePath());
+    final var subCommand = args[2];
+    if (!SUB_COMMAND_FUNCTIONS.containsKey(subCommand)) {
+      printUsage(args);
+      System.exit(1);
+    }
+  }
 
-    final var partitionsDir = root.resolve(PARTITIONS_FOLDER);
-    LOGGER.info("Partitions directory: {}", partitionsDir.toAbsolutePath());
+  public static void main(String[] args) throws Exception {
+    LOGGER.info("Zeebe Inspector \uD83D\uDD0E");
 
-    final var inspector = new Inspector(root);
+    ensureCorrectUsage(args);
 
-    final var states = inspector.openState(partitionsDir);
+    final var dir = args[0];
+    final var partitionsDir = Path.of(dir);
+    final var command = args[1];
+    LOGGER.info("Partitions directory: {}", partitionsDir);
 
-    states.forEach(inspector::printDeployedWorkflows);
+    final var partition = partitionsDir.getFileName().toString();
+    final int partitionId = Integer.valueOf(partition);
+    LOGGER.info("Partition: {}", partitionId);
 
-    states.forEach(inspector::printIncidents);
+    final var entityInspection = COMMAND_FUNCTIONS.get(command);
+    ZeebeDb<ZbColumnFamilies> zeebeDb = null;
+    try {
+      final var dbDirectory = partitionsDir.resolve(DB_FOLDER);
+      zeebeDb = openZeebeDb(dbDirectory);
+      final var state = new ZeebeState(zeebeDb, partitionId, zeebeDb.createContext());
+      entityInspection.use(state);
 
-    states.forEach(inspector::printBlacklist);
-
-    states.forEach(partition -> {
-      try {
-        partition.zeebeDb.close();
-      } catch (Exception e) {
-        e.printStackTrace();
+      final var subCommand = SUB_COMMAND_FUNCTIONS.get(args[2]);
+      LOGGER.info(subCommand.apply(entityInspection));
+    } finally {
+      if (zeebeDb != null) {
+        zeebeDb.close();
       }
-    });
-  }
-
-  public List<PartitionState> openState(Path partitionsDirectory) {
-    try {
-      return Files.list(partitionsDirectory).map(partitionDir -> {
-        final var partition = partitionDir.getFileName().toString();
-
-        final var partitionId = Integer.valueOf(partition);
-
-        LOGGER.info("Partition: {}", partitionId);
-
-        final var dbDirectory = partitionDir.resolve(DB_FOLDER);
-
-        final var zeebeDb = openZeebeDb(dbDirectory);
-        final var dbContext = zeebeDb.createContext();
-        final var zeebeState = new ZeebeState(partitionId, zeebeDb, dbContext);
-
-        return new PartitionState(zeebeDb, zeebeState, dbContext);
-      }).collect(Collectors.toList());
-
-    } catch (IOException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
     }
   }
 
-  private ZeebeDb<ZbColumnFamilies> openZeebeDb(Path directory) {
+  private static ZeebeDb<ZbColumnFamilies> openZeebeDb(Path directory) {
     LOGGER.info("Open database: {}", directory.toAbsolutePath());
-
-    try {
-      final ZeebeDb<ZbColumnFamilies> db =
+      return
           DefaultZeebeDbFactory.DEFAULT_DB_FACTORY.createDb(directory.toFile());
+  }
 
-      return db;
-    } catch (final Exception e) {
-      throw new RuntimeException(e);
+  private static String listEntities(EntityInspection entityInspection) {
+    final var builder = new StringBuilder("\nList:");
+    final var list = entityInspection.list();
+
+    for (String entity : list) {
+      builder.append("\n\t").append(entity);
     }
+
+    return builder.toString();
+  }
+
+  private static String getEntity(EntityInspection entityInspection) {
+//    final var builder = new StringBuilder("\nList:");
+//    final var list = entityInspection.entity();
+//
+//    for (String entity : list) {
+//      builder.append("\n\t").append(entity);
+//    }
+// Todo my idea seems not to work since we now need the key
+    return "Entity";
   }
 
   private void printDeployedWorkflows(final PartitionState partition) {
