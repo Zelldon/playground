@@ -4,6 +4,7 @@ import io.zeebe.db.ColumnFamily;
 import io.zeebe.db.DbContext;
 import io.zeebe.db.ZeebeDb;
 import io.zeebe.db.impl.DbLong;
+import io.zeebe.db.impl.DbNil;
 import io.zeebe.engine.state.DefaultZeebeDbFactory;
 import io.zeebe.engine.state.ZbColumnFamilies;
 import io.zeebe.engine.state.ZeebeState;
@@ -90,6 +91,8 @@ public final class Inspector {
 
     states.forEach(inspector::printIncidents);
 
+    states.forEach(inspector::printBlacklist);
+
     states.forEach(partition -> {
       try {
         partition.zeebeDb.close();
@@ -164,6 +167,29 @@ public final class Inspector {
           incidentRecord.getErrorType(), incidentRecord.getErrorMessage());
     });
 
+  }
+
+  private void printBlacklist(final PartitionState partition) {
+
+    final var elementInstanceState = partition.zeebeState.getWorkflowState()
+        .getElementInstanceState();
+
+    final var blacklistColumnFamily = partition.zeebeDb
+        .createColumnFamily(ZbColumnFamilies.BLACKLIST, partition.dbContext, new DbLong(),
+            DbNil.INSTANCE);
+
+    LOGGER.info("Workflow Instances on the Backlist:");
+
+    blacklistColumnFamily.forEach((key, nil) -> {
+      final var workflowInstanceKey = key.getValue();
+
+      final var workflowInstance = elementInstanceState.getInstance(workflowInstanceKey);
+      final var bpmnProcessId = workflowInstance.getValue()
+          .getBpmnProcessId();
+
+      LOGGER.info("> Workflow Instance[key: {}, BPMN process id: '{}']", workflowInstanceKey,
+          bpmnProcessId);
+    });
   }
 
   private static class PartitionState {
