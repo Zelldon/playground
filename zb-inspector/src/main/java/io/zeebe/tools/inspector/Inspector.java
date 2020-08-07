@@ -80,7 +80,7 @@ public final class Inspector {
     }
 
     final var subCommand = args[2];
-    if (!SUB_COMMAND_FUNCTIONS.containsKey(subCommand)) {
+    if (!SUB_COMMAND_FUNCTIONS.contains(subCommand)) {
       printUsage(args);
       System.exit(1);
     }
