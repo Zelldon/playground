@@ -4,7 +4,6 @@ import io.zeebe.engine.state.ZeebeState;
 import java.util.List;
 
 public interface EntityInspection {
-  EntityInspection use(ZeebeState zeebeState);
-  List<String> list();
-  String entity(final String key);
+  List<String> list(final PartitionState partitionState);
+  String entity(final PartitionState partitionState, final long key);
 }
