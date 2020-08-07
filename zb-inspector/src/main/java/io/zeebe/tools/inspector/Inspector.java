@@ -8,7 +8,10 @@ import io.zeebe.util.buffer.BufferUtil;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,26 +23,53 @@ public final class Inspector {
   private static final String PARTITIONS_FOLDER = "data/raft-partition/partitions";
   private static final String DB_FOLDER = "runtime";
 
+  private static final Map<String, String> USAGE_CMD = Map.of("incident", "get information about incidents",
+      "blacklist", "get information about blacklisted instances");
+  private static final Map<String, Supplier<String>> COMMAND_FUNCTIONS = Map.of();
+
   private final Path rootDirectory;
 
   public Inspector(final Path rootDirectory) {
     this.rootDirectory = rootDirectory;
   }
 
+  private static void printUsage(String[] args) {
+    var builder = new StringBuilder("Unexpected usage. Couldn't map given parameters '")
+        .append(Arrays.toString(args))
+        .append('\'')
+        .append('\n')
+        .append("Expected usage: java -jar inspector.jar <path> <command>")
+        .append("\nCommand:");
+
+    for (var entry : USAGE_CMD.entrySet()) {
+      builder.append("\n\t- ")
+          .append(entry.getKey())
+          .append("\t\t\t")
+          .append(entry.getValue());
+    }
+
+    LOGGER.warn(builder.toString());
+  }
+
   public static void main(String[] args) {
 
     LOGGER.info("Zeebe Inspector \uD83D\uDD0E");
 
-    if (args.length < 1) {
-      LOGGER.error("Missing argument.");
+    if (args.length < 2) {
+      printUsage(args);
       System.exit(1);
     }
 
     final String dir = args[0];
-
     final var root = Path.of(dir);
     if (!Files.exists(root)) {
       LOGGER.error("Root directory does not exist: {}", root.toAbsolutePath());
+      System.exit(1);
+    }
+
+    final var command = args[1];
+    if (!USAGE_CMD.containsKey(command)) {
+      printUsage(args);
       System.exit(1);
     }
 
