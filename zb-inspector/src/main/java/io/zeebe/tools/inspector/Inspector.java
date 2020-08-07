@@ -25,7 +25,7 @@ public final class Inspector {
 
   private static final Map<String, String> USAGE_CMD = Map.of("incident", "get information about incidents",
       "blacklist", "get information about blacklisted instances");
-  private static final Map<String, Supplier<String>> COMMAND_FUNCTIONS = Map.of();
+  private static final Map<String, EntityInspection> COMMAND_FUNCTIONS = Map.of("incident", new IncidentInspection());
 
   private final Path rootDirectory;
 
@@ -68,7 +68,7 @@ public final class Inspector {
     }
 
     final var command = args[1];
-    if (!USAGE_CMD.containsKey(command)) {
+    if (!COMMAND_FUNCTIONS.containsKey(command)) {
       printUsage(args);
       System.exit(1);
     }
