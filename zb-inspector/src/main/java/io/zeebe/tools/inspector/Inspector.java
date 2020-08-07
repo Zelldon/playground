@@ -96,7 +96,7 @@ public final class Inspector {
 
     if (subCommand.equals("entity")) {
       if (args.length < 4) {
-        LOGGER.error("The entity subcommand expectes and key as additional paramter.");
+        LOGGER.error("The entity subcommand expects and key as additional paramter.");
         printUsage(args);
         System.exit(1);
       }
@@ -105,7 +105,7 @@ public final class Inspector {
       try {
         Long.parseLong(key);
       } catch (NumberFormatException nfe) {
-        LOGGER.error("The entity subcommand expectes an long key as additional paramter.", nfe);
+        LOGGER.error("The entity subcommand expects an long key as additional parameter.", nfe);
         printUsage(args);
         System.exit(1);
       }
