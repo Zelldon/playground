@@ -21,8 +21,12 @@ public final class Inspector {
 
   private static final Map<String, String> USAGE_COMMAND =
       Map.of(
-          "incident", "get information about incidents",
-      "blacklist", "get information about blacklisted instances");
+          "incident",
+          "get information about incidents",
+          "blacklist",
+          "get information about blacklisted instances",
+          "workflow",
+          "get information about workflows");
 
   private static final Map<String, String> USAGE_SUB_COMMAND =
       Map.of(
@@ -31,7 +35,7 @@ public final class Inspector {
 
   private static final Map<String, EntityInspection> COMMAND_FUNCTIONS = Map.of(
       "incident", new IncidentInspection(),
-      "blacklist", new BlacklistInspection());
+      "blacklist", new BlacklistInspection(), "workflow", new WorkflowInspection());
 
   private static final Set<String> SUB_COMMAND_FUNCTIONS = Set.of("list", "entity");
 
