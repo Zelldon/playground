@@ -37,12 +37,6 @@ public final class Inspector {
       "list", Inspector::listEntities);
 //      "entity", new IncidentInspection());
 
-  private final Path rootDirectory;
-
-  public Inspector(final Path rootDirectory) {
-    this.rootDirectory = rootDirectory;
-  }
-
   private static void printUsage(String[] args) {
     var builder = new StringBuilder("Unexpected usage. Couldn't map given parameters '")
         .append(Arrays.toString(args))
@@ -116,7 +110,7 @@ public final class Inspector {
     try {
       final var dbDirectory = partitionsDir.resolve(DB_FOLDER);
       zeebeDb = openZeebeDb(dbDirectory);
-      final var state = new ZeebeState(zeebeDb, partitionId, zeebeDb.createContext());
+      final var state = new ZeebeState(partitionId, zeebeDb, zeebeDb.createContext());
       entityInspection.use(state);
 
       final var subCommand = SUB_COMMAND_FUNCTIONS.get(args[2]);
@@ -223,5 +217,4 @@ public final class Inspector {
       this.dbContext = dbContext;
     }
   }
-
 }
