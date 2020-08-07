@@ -1,9 +1,13 @@
 package io.zeebe.tools.inspector;
 
+import io.zeebe.db.ColumnFamily;
+import io.zeebe.db.DbContext;
 import io.zeebe.db.ZeebeDb;
+import io.zeebe.db.impl.DbLong;
 import io.zeebe.engine.state.DefaultZeebeDbFactory;
 import io.zeebe.engine.state.ZbColumnFamilies;
 import io.zeebe.engine.state.ZeebeState;
+import io.zeebe.engine.state.instance.Incident;
 import io.zeebe.util.buffer.BufferUtil;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -84,10 +88,18 @@ public final class Inspector {
 
     states.forEach(inspector::printDeployedWorkflows);
 
-    // TODO: close db
+    states.forEach(inspector::printIncidents);
+
+    states.forEach(partition -> {
+      try {
+        partition.zeebeDb.close();
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    });
   }
 
-  public List<ZeebeState> openState(Path partitionsDirectory) {
+  public List<PartitionState> openState(Path partitionsDirectory) {
     try {
       return Files.list(partitionsDirectory).map(partitionDir -> {
         final var partition = partitionDir.getFileName().toString();
@@ -99,9 +111,10 @@ public final class Inspector {
         final var dbDirectory = partitionDir.resolve(DB_FOLDER);
 
         final var zeebeDb = openZeebeDb(dbDirectory);
-        final var zeebeState = openState(zeebeDb, partitionId);
+        final var dbContext = zeebeDb.createContext();
+        final var zeebeState = new ZeebeState(partitionId, zeebeDb, dbContext);
 
-        return zeebeState;
+        return new PartitionState(zeebeDb, zeebeState, dbContext);
       }).collect(Collectors.toList());
 
     } catch (IOException e) {
@@ -109,13 +122,6 @@ public final class Inspector {
       throw new RuntimeException(e);
     }
   }
-
-  public ZeebeState openState(ZeebeDb<ZbColumnFamilies> zeebeDb, int partitionId) {
-    final var dbContext = zeebeDb.createContext();
-    final var zeebeState = new ZeebeState(partitionId, zeebeDb, dbContext);
-    return zeebeState;
-  }
-
 
   private ZeebeDb<ZbColumnFamilies> openZeebeDb(Path directory) {
     LOGGER.info("Open database: {}", directory.toAbsolutePath());
@@ -130,11 +136,49 @@ public final class Inspector {
     }
   }
 
-  private void printDeployedWorkflows(final ZeebeState zeebeState) {
+  private void printDeployedWorkflows(final PartitionState partition) {
     LOGGER.info("Deployed workflows:");
-    zeebeState.getWorkflowState().getWorkflows().forEach(workflow -> LOGGER
-        .info("> Workflow[key: {}, version: {}, BPMN process id: {}]", workflow.getKey(),
+    partition.zeebeState.getWorkflowState().getWorkflows().forEach(workflow -> LOGGER
+        .info("> Workflow[key: {}, version: {}, BPMN process id: '{}']", workflow.getKey(),
             workflow.getVersion(), BufferUtil.bufferAsString(workflow.getBpmnProcessId())));
+  }
+
+  private void printIncidents(final PartitionState partition) {
+
+    LOGGER.info("Open incidents:");
+
+    final DbLong incidentDbKey = new DbLong();
+    final ColumnFamily<DbLong, Incident> incidentColumnFamily = partition.zeebeDb
+        .createColumnFamily(ZbColumnFamilies.INCIDENTS, partition.dbContext, incidentDbKey,
+            new Incident());
+
+    incidentColumnFamily.forEach((key, incident) -> {
+
+      final var incidentKey = key.getValue();
+      final var incidentRecord = incident.getRecord();
+
+      LOGGER.info(
+          "> Incident[key: {}, workflow-instance: {}, BPMN process id: '{}', error type: {}, error-message: '{}']",
+          incidentKey,
+          incidentRecord.getWorkflowInstanceKey(), incidentRecord.getBpmnProcessId(),
+          incidentRecord.getErrorType(), incidentRecord.getErrorMessage());
+    });
+
+  }
+
+  private static class PartitionState {
+
+    private final ZeebeDb<ZbColumnFamilies> zeebeDb;
+    private final ZeebeState zeebeState;
+    private final DbContext dbContext;
+
+    private PartitionState(
+        final ZeebeDb<ZbColumnFamilies> zeebeDb, final ZeebeState zeebeState,
+        final DbContext dbContext) {
+      this.zeebeDb = zeebeDb;
+      this.zeebeState = zeebeState;
+      this.dbContext = dbContext;
+    }
   }
 
 }
