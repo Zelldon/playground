@@ -26,41 +26,46 @@ public final class Inspector {
           "blacklist",
           "get information about blacklisted instances",
           "workflow",
-          "get information about workflows");
+          "get information about workflows",
+          "exporter",
+          "get information about exporters");
 
   private static final Map<String, String> USAGE_SUB_COMMAND =
       Map.of(
           "list", "get a list of existing entities",
           "entity <key>", "get information about a specificy entity - a separate key is needed.");
 
-  private static final Map<String, EntityInspection> COMMAND_FUNCTIONS = Map.of(
-      "incident", new IncidentInspection(),
-      "blacklist", new BlacklistInspection(), "workflow", new WorkflowInspection());
+  private static final Map<String, EntityInspection> COMMAND_FUNCTIONS =
+      Map.of(
+          "incident",
+          new IncidentInspection(),
+          "blacklist",
+          new BlacklistInspection(),
+          "workflow",
+          new WorkflowInspection(),
+          "exporter",
+          new ExporterInspection());
 
   private static final Set<String> SUB_COMMAND_FUNCTIONS = Set.of("list", "entity");
 
   private static void printUsage(String[] args) {
-    var builder = new StringBuilder("Unexpected usage. Couldn't map given parameters '")
-        .append(Arrays.toString(args))
-        .append('\'')
-        .append('\n')
-        .append("Expected usage: java -jar inspector.jar <pathToPartition> <command> <subcommand>")
-        .append("\nCommand:");
+    var builder =
+        new StringBuilder("Unexpected usage. Couldn't map given parameters '")
+            .append(Arrays.toString(args))
+            .append('\'')
+            .append('\n')
+            .append(
+                "Expected usage: java -jar inspector.jar <pathToPartition> <command> <subcommand>")
+            .append("\nCommand:");
 
     for (var entry : USAGE_COMMAND.entrySet()) {
-      builder.append("\n\t- ")
-          .append(entry.getKey())
-          .append("\t\t\t")
-          .append(entry.getValue());
+      builder.append("\n\t- ").append(entry.getKey()).append("\t\t\t").append(entry.getValue());
     }
 
     builder.append("\nSubcommand:");
 
     for (var entry : USAGE_SUB_COMMAND.entrySet()) {
-      builder.append("\n\t- ")
-          .append(entry.getKey())
-          .append("\t\t")
-          .append(entry.getValue());
+      builder.append("\n\t- ").append(entry.getKey()).append("\t\t").append(entry.getValue());
     }
 
     LOGGER.warn(builder.toString());
@@ -144,10 +149,9 @@ public final class Inspector {
 
       final var partitionState = PartitionState.of(zeebeDb, state, dbContext);
 
-      if (subCommand.equals("list"))
-      {
+      if (subCommand.equals("list")) {
         LOGGER.info(listEntities(partitionState, entityInspection));
-      } else if (subCommand.equals("entity")){
+      } else if (subCommand.equals("entity")) {
         if (args.length < 4) {
           System.exit(1);
         }
@@ -166,11 +170,11 @@ public final class Inspector {
 
   private static ZeebeDb<ZbColumnFamilies> openZeebeDb(Path directory) {
     LOGGER.info("Open database: {}", directory.toAbsolutePath());
-      return
-          DefaultZeebeDbFactory.DEFAULT_DB_FACTORY.createDb(directory.toFile());
+    return DefaultZeebeDbFactory.DEFAULT_DB_FACTORY.createDb(directory.toFile());
   }
 
-  private static String listEntities(PartitionState partitionState, EntityInspection entityInspection) {
+  private static String listEntities(
+      PartitionState partitionState, EntityInspection entityInspection) {
     final var builder = new StringBuilder("\nList:");
     final var list = entityInspection.list(partitionState);
 
@@ -181,8 +185,8 @@ public final class Inspector {
     return builder.toString();
   }
 
-  private static String getEntity(PartitionState partitionState, EntityInspection entityInspection, long key) {
+  private static String getEntity(
+      PartitionState partitionState, EntityInspection entityInspection, long key) {
     return entityInspection.entity(partitionState, key);
   }
-
 }
