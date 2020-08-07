@@ -149,7 +149,9 @@ public final class Inspector {
 
       final var partitionState = PartitionState.of(zeebeDb, state, dbContext);
 
-      if (subCommand.equals("list")) {
+      LOGGER.info("Running subcommand: {}", subCommand);
+      if (subCommand.equals("list"))
+      {
         LOGGER.info(listEntities(partitionState, entityInspection));
       } else if (subCommand.equals("entity")) {
         if (args.length < 4) {

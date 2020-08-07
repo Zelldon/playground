@@ -1,15 +1,21 @@
 package io.zeebe.tools.inspector;
 
+import com.fasterxml.jackson.annotation.ObjectIdGenerators.StringIdGenerator;
+import com.google.common.io.CharStreams;
 import io.zeebe.db.ColumnFamily;
 import io.zeebe.db.impl.DbLong;
 import io.zeebe.db.impl.DbNil;
 import io.zeebe.engine.state.ZbColumnFamilies;
+import io.zeebe.engine.state.instance.ElementInstance;
+import io.zeebe.engine.state.instance.ElementInstanceState;
 import io.zeebe.engine.state.instance.Incident;
 import io.zeebe.protocol.impl.record.value.incident.IncidentRecord;
+import io.zeebe.protocol.impl.record.value.workflowinstance.WorkflowInstanceRecord;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+import org.apache.commons.math3.random.RandomGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,21 +49,78 @@ public class BlacklistInspection implements EntityInspection {
 
   @Override
   public String entity(final PartitionState partitionState, final long key) {
+    final var elementInstanceState = partitionState.getZeebeState().getWorkflowState()
+        .getElementInstanceState();
+
+    final var keyType = new DbLong();
     final var blacklistColumnFamily = partitionState.getZeebeDb()
-        .createColumnFamily(ZbColumnFamilies.BLACKLIST, partitionState.getDbContext(), new DbLong(),
+        .createColumnFamily(ZbColumnFamilies.BLACKLIST, partitionState.getDbContext(), keyType,
             DbNil.INSTANCE);
 
-    var blacklistedInstance = new AtomicReference<String>("No entity found for given key " + key);
-    blacklistColumnFamily.whileTrue((dbKey, nil) -> {
-      final var workflowInstanceKey = dbKey.getValue();
+    keyType.wrapLong(key);
+    final var dbNil = blacklistColumnFamily.get(keyType);
 
-      if (workflowInstanceKey == key) {
-        blacklistedInstance.set(String.valueOf(workflowInstanceKey));
-      }
-      return workflowInstanceKey != key;
-    });
+    return Optional.ofNullable(dbNil).map(nil -> {
+      final var workflowInstance = elementInstanceState.getInstance(key);
+      return getBlacklistedWorkflowInstanceAsString(elementInstanceState, workflowInstance);
+    }).orElse("No entity found for given key " + key);
+  }
 
-    return blacklistedInstance.get();
+  private static String getBlacklistedWorkflowInstanceAsString(ElementInstanceState elementInstanceState, ElementInstance workflowInstance) {
+
+    final var stringBuilder = new StringBuilder("Blacklisted workflow instance:\n");
+
+    final var workflowInstanceValue = workflowInstance.getValue();
+    stringBuilder.append("\nBPMN process id: ").append(workflowInstanceValue.getBpmnProcessId())
+                 .append("\nVersion: ").append(workflowInstanceValue.getVersion())
+                 .append("\nWorkflowKey: ").append(workflowInstanceValue.getWorkflowKey())
+                 .append("\nWorkflowInstanceKey: ").append(workflowInstanceValue.getWorkflowInstanceKey())
+                 .append("\nElementId: ").append(workflowInstanceValue.getElementId())
+                 .append("\nBpmnElementType: ").append(workflowInstanceValue.getBpmnElementType())
+                 .append("\nParentWorkflowInstanceKey: ").append(workflowInstanceValue.getParentWorkflowInstanceKey());
+
+    return addChildrenRecursive(stringBuilder, 1, elementInstanceState, workflowInstance).toString();
+  }
+
+  private static StringBuilder addChildrenRecursive(final StringBuilder stringBuilder,
+      final int intend,
+      final ElementInstanceState elementInstanceState,
+      final ElementInstance elementInstance) {
+    if (elementInstance.getKey() != elementInstance.getValue().getWorkflowInstanceKey()) {
+      addElemtentInstance(stringBuilder, intend, elementInstance);
+    }
+
+    final var children = elementInstanceState.getChildren(elementInstance.getKey());
+    if (children == null || children.isEmpty()) {
+      return stringBuilder;
+    }
+
+    stringBuilder.append('\n').append("\t".repeat(intend)).append("Childs:\n");
+    for (var child : children) {
+      addChildrenRecursive(stringBuilder, intend + 1, elementInstanceState, child)
+          .append("\n");
+    }
+
+    return stringBuilder;
+  }
+
+  private static void addElemtentInstance(StringBuilder stringBuilder, int intend, ElementInstance childElementInstance) {
+    final var childElementInstanceValue = childElementInstance.getValue();
+    stringBuilder
+        .append('\n').append("\t".repeat(intend))
+        .append("Key: ").append(childElementInstance.getKey())
+        .append('\n').append("\t".repeat(intend))
+        .append("WorkflowInstanceKey: ").append(childElementInstanceValue.getWorkflowInstanceKey())
+        .append('\n').append("\t".repeat(intend))
+        .append("ElementId: ").append(childElementInstanceValue.getElementId())
+        .append('\n').append("\t".repeat(intend))
+        .append("BpmnElementType: ").append(childElementInstanceValue.getBpmnElementType())
+        .append('\n').append("\t".repeat(intend))
+        .append("ParentElementInstanceKey: ").append(childElementInstanceValue.getParentElementInstanceKey())
+        .append('\n').append("\t".repeat(intend))
+        .append("ParentWorkflowInstanceKey: ").append(childElementInstanceValue.getParentWorkflowInstanceKey())
+        .append('\n').append("\t".repeat(intend))
+        .append("FlowScopeKey: ").append(childElementInstanceValue.getFlowScopeKey());
   }
 
   private static String toString(final long workflowInstanceKey, final String bpmnProcessId) {
