@@ -1,22 +1,14 @@
 package io.zeebe.tools.inspector;
 
-import io.zeebe.db.ColumnFamily;
-import io.zeebe.db.DbContext;
 import io.zeebe.db.ZeebeDb;
-import io.zeebe.db.impl.DbLong;
-import io.zeebe.db.impl.DbNil;
 import io.zeebe.engine.state.DefaultZeebeDbFactory;
 import io.zeebe.engine.state.ZbColumnFamilies;
 import io.zeebe.engine.state.ZeebeState;
-import io.zeebe.engine.state.instance.Incident;
-import io.zeebe.util.buffer.BufferUtil;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,8 +19,16 @@ public final class Inspector {
   private static final String PARTITIONS_FOLDER = "data/raft-partition/partitions";
   private static final String DB_FOLDER = "runtime";
 
-  private static final Map<String, String> USAGE_CMD = Map.of("incident", "get information about incidents",
+  private static final Map<String, String> USAGE_COMMAND =
+      Map.of(
+          "incident", "get information about incidents",
       "blacklist", "get information about blacklisted instances");
+
+  private static final Map<String, String> USAGE_SUB_COMMAND =
+      Map.of(
+          "list", "get a list of existing entities",
+          "entity <key>", "get information about a specificy entity - a separate key is needed.");
+
   private static final Map<String, EntityInspection> COMMAND_FUNCTIONS = Map.of("incident", new IncidentInspection());
   private static final Set<String> SUB_COMMAND_FUNCTIONS = Set.of("list", "entity");
 
@@ -37,13 +37,22 @@ public final class Inspector {
         .append(Arrays.toString(args))
         .append('\'')
         .append('\n')
-        .append("Expected usage: java -jar inspector.jar <pathToPartition> <command>")
+        .append("Expected usage: java -jar inspector.jar <pathToPartition> <command> <subcommand>")
         .append("\nCommand:");
 
-    for (var entry : USAGE_CMD.entrySet()) {
+    for (var entry : USAGE_COMMAND.entrySet()) {
       builder.append("\n\t- ")
           .append(entry.getKey())
           .append("\t\t\t")
+          .append(entry.getValue());
+    }
+
+    builder.append("\nSubcommand:");
+
+    for (var entry : USAGE_SUB_COMMAND.entrySet()) {
+      builder.append("\n\t- ")
+          .append(entry.getKey())
+          .append("\t\t")
           .append(entry.getValue());
     }
 
@@ -84,6 +93,23 @@ public final class Inspector {
       printUsage(args);
       System.exit(1);
     }
+
+    if (subCommand.equals("entity")) {
+      if (args.length < 4) {
+        LOGGER.error("The entity subcommand expectes and key as additional paramter.");
+        printUsage(args);
+        System.exit(1);
+      }
+
+      final var key = args[3];
+      try {
+        Long.parseLong(key);
+      } catch (NumberFormatException nfe) {
+        LOGGER.error("The entity subcommand expectes an long key as additional paramter.", nfe);
+        printUsage(args);
+        System.exit(1);
+      }
+    }
   }
 
   public static void main(String[] args) throws Exception {
@@ -93,8 +119,9 @@ public final class Inspector {
 
     final var dir = args[0];
     final var partitionsDir = Path.of(dir);
-    final var command = args[1];
     LOGGER.info("Partitions directory: {}", partitionsDir);
+    final var command = args[1];
+    final var subCommand = args[2];
 
     final var partition = partitionsDir.getFileName().toString();
     final int partitionId = Integer.valueOf(partition);
@@ -109,8 +136,6 @@ public final class Inspector {
       final var state = new ZeebeState(partitionId, zeebeDb, dbContext);
 
       final var partitionState = PartitionState.of(zeebeDb, state, dbContext);
-//      entityInspection.use(new PartitionState(zeebeDb, );
-      final var subCommand = args[2];
 
       if (subCommand.equals("list"))
       {
@@ -119,6 +144,9 @@ public final class Inspector {
         if (args.length < 4) {
           System.exit(1);
         }
+
+        final var key = Long.parseLong(args[3]);
+        LOGGER.info(getEntity(partitionState, entityInspection, key));
       }
 
       LOGGER.info("Bye...");
@@ -146,68 +174,8 @@ public final class Inspector {
     return builder.toString();
   }
 
-  private static String getEntity(EntityInspection entityInspection) {
-//    final var builder = new StringBuilder("\nList:");
-//    final var list = entityInspection.entity();
-//
-//    for (String entity : list) {
-//      builder.append("\n\t").append(entity);
-//    }
-// Todo my idea seems not to work since we now need the key
-    return "Entity";
+  private static String getEntity(PartitionState partitionState, EntityInspection entityInspection, long key) {
+    return entityInspection.entity(partitionState, key);
   }
-//
-//  private void printDeployedWorkflows(final PartitionState partition) {
-//    LOGGER.info("Deployed workflows:");
-//    partition.zeebeState.getWorkflowState().getWorkflows().forEach(workflow -> LOGGER
-//        .info("> Workflow[key: {}, version: {}, BPMN process id: '{}']", workflow.getKey(),
-//            workflow.getVersion(), BufferUtil.bufferAsString(workflow.getBpmnProcessId())));
-//  }
-//
-//  private void printIncidents(final PartitionState partition) {
-//
-//    LOGGER.info("Open incidents:");
-//
-//    final DbLong incidentDbKey = new DbLong();
-//    final ColumnFamily<DbLong, Incident> incidentColumnFamily = partition.zeebeDb
-//        .createColumnFamily(ZbColumnFamilies.INCIDENTS, partition.dbContext, incidentDbKey,
-//            new Incident());
-//
-//    incidentColumnFamily.forEach((key, incident) -> {
-//
-//      final var incidentKey = key.getValue();
-//      final var incidentRecord = incident.getRecord();
-//
-//      LOGGER.info(
-//          "> Incident[key: {}, workflow-instance: {}, BPMN process id: '{}', error type: {}, error-message: '{}']",
-//          incidentKey,
-//          incidentRecord.getWorkflowInstanceKey(), incidentRecord.getBpmnProcessId(),
-//          incidentRecord.getErrorType(), incidentRecord.getErrorMessage());
-//    });
-//
-//  }
-//
-//  private void printBlacklist(final PartitionState partition) {
-//
-//    final var elementInstanceState = partition.zeebeState.getWorkflowState()
-//        .getElementInstanceState();
-//
-//    final var blacklistColumnFamily = partition.zeebeDb
-//        .createColumnFamily(ZbColumnFamilies.BLACKLIST, partition.dbContext, new DbLong(),
-//            DbNil.INSTANCE);
-//
-//    LOGGER.info("Workflow Instances on the Backlist:");
-//
-//    blacklistColumnFamily.forEach((key, nil) -> {
-//      final var workflowInstanceKey = key.getValue();
-//
-//      final var workflowInstance = elementInstanceState.getInstance(workflowInstanceKey);
-//      final var bpmnProcessId = workflowInstance.getValue()
-//          .getBpmnProcessId();
-//
-//      LOGGER.info("> Workflow Instance[key: {}, BPMN process id: '{}']", workflowInstanceKey,
-//          bpmnProcessId);
-//    });
-//  }
 
 }
