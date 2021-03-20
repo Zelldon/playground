@@ -1,4 +1,5 @@
 import com.google.cloud.container.v1.ClusterManagerClient
+import com.google.container.v1.ListClustersRequest
 
 //
 //class ReplacedGCPAuthenticator(val credentials : GoogleCredentials) : Authenticator {
@@ -56,7 +57,7 @@ fun main(args: Array<String>) {
 //    registerGcloudAuthenticator()
 
 ClusterManagerClient.create().use {
-    val response = it.listClusters("zeebe-io");
+    val response = it.listClusters("projects/zeebe-io/locations/-");
     println(response.toString())
 }
 //    // https://kubernetes.io/docs/tasks/administer-cluster/access-cluster-api/#java-client
