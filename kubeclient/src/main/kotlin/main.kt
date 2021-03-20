@@ -56,7 +56,7 @@ class ReplacedGCPAuthenticator(val credentials : GoogleCredentials) : Authentica
 
 @Throws(IOException::class)
 private fun registerGcloudAuthenticator() {
-    KubeConfig.registerAuthenticator(ReplacedGCPAuthenticator(ServiceAccountCredentials.getApplicationDefault().createScoped("container.googleapis.com"
+    KubeConfig.registerAuthenticator(ReplacedGCPAuthenticator(ServiceAccountCredentials.getApplicationDefault().createScoped("https://www.googleapis.com/auth/compute"
 )));
 }
 
