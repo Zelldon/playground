@@ -1,6 +1,9 @@
+import io.kubernetes.client.openapi.ApiClient
 import io.kubernetes.client.openapi.Configuration
 import io.kubernetes.client.openapi.apis.CoreV1Api
 import io.kubernetes.client.util.ClientBuilder
+import io.kubernetes.client.util.KubeConfig
+import java.io.FileReader
 
 fun main(args: Array<String>) {
 
@@ -11,12 +14,12 @@ fun main(args: Array<String>) {
     // Unimplemented
     //	at io.kubernetes.client.util.authenticators.GCPAuthenticator.refresh(GCPAuthenticator.java:61)
 
-    // loading the in-cluster config, including:
-    //   1. service-account CA
-    //   2. service-account bearer-token
-    //   3. service-account namespace
-    //   4. master endpoints(ip, port) from pre-set environment variables
-    val client = ClientBuilder.cluster().build()
+    val kubeConfigPath = System.getenv("HOME") + "/.kube/config";
+
+    // loading the out-of-cluster config, a kubeconfig from file-system
+    val client =
+        ClientBuilder.kubeconfig(KubeConfig.loadKubeConfig(FileReader(kubeConfigPath))).build();
+
     Configuration.setDefaultApiClient(client)
 
     // the CoreV1Api loads default api-client from global configuration.
