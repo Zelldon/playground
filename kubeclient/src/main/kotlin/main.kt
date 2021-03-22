@@ -87,15 +87,17 @@ fun main(args: Array<String>) {
     val kubeConfigPath = System.getenv("HOME") + "/.kube/config";
 
     // loading the out-of-cluster config, a kubeconfig from file-system
+    val kubeConfig = KubeConfig.loadKubeConfig(FileReader(kubeConfigPath))
     val client =
-        ClientBuilder.kubeconfig(KubeConfig.loadKubeConfig(FileReader(kubeConfigPath))).build();
+        ClientBuilder.kubeconfig(kubeConfig).build();
 
     Configuration.setDefaultApiClient(client)
 
 
     // the CoreV1Api loads default api-client from global configuration.
     val api = CoreV1Api()
-    val list = api.listNamespacedPod("testbench", null, null, null, null, null, null, null, null, null ,null);
+
+    val list = api.listNamespace(null, null,null,null,null,null,null,null,null);
 //    val list = api.listNamespacedPod(
 //        "default",
 //        null,
