@@ -97,7 +97,7 @@ fun main(args: Array<String>) {
     // the CoreV1Api loads default api-client from global configuration.
     val api = CoreV1Api()
 
-    val list = api.listNamespace(null, null,null,null,null,null,null,null,null);
+    val list = api.listNamespace(null, null,null,null,null,null,null,null,null, null);
 //    val list = api.listNamespacedPod(
 //        "default",
 //        null,
